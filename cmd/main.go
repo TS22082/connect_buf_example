@@ -2,15 +2,18 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"connectrpc.com/connect"
 	"connectrpc.com/validate"
 	greetv1 "github.com/TS22082/connect_buf_example/gen/greet/v1"
 	"github.com/TS22082/connect_buf_example/gen/greet/v1/greetv1connect"
+	"github.com/gorilla/mux"
 )
 
 type GreetServer struct{}
@@ -26,27 +29,50 @@ func (s *GreetServer) Greet(
 }
 
 func main() {
+	router := mux.NewRouter()
+
+	api := router.PathPrefix("/api/v1").Subrouter()
+	api.HandleFunc("/user/{id}", func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		projectId, exists := vars["id"]
+
+		if !exists {
+			http.Error(w, "Wrong input", http.StatusExpectationFailed)
+			return
+		}
+
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
+			"msg":       fmt.Sprintf("ProjectId: %s", projectId),
+			"timestamp": time.Now().UTC(),
+		}); err != nil {
+			http.Error(w, "Can not send response", http.StatusExpectationFailed)
+			return
+		}
+	}).Methods("GET")
+
 	greeter := &GreetServer{}
-	mux := http.NewServeMux()
 	path, handler := greetv1connect.NewGreetServiceHandler(
 		greeter,
-		// Validation via Protovalidate is almost always recommended
 		connect.WithInterceptors(validate.NewInterceptor()),
 	)
-	mux.Handle(path, handler)
+
+	router.PathPrefix(path).Handler(handler)
+
 	p := new(http.Protocols)
 	p.SetHTTP1(true)
-	// Use h2c so we can serve HTTP/2 without TLS.
 	p.SetUnencryptedHTTP2(true)
+
 	s := http.Server{
 		Addr:      "localhost:8080",
-		Handler:   mux,
+		Handler:   router,
 		Protocols: p,
 	}
 
-	fmt.Println("Server started :8080")
+	fmt.Println("REST route: GET /api/v1/user/{id}")
+	fmt.Printf("RPC route: POST %s{method}\n", path)
 
 	if err := s.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatalf("Server failed to start: %v", err)
 	}
+
 }
