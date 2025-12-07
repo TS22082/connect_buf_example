@@ -2,17 +2,16 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
-	"time"
 
 	"connectrpc.com/connect"
 	"connectrpc.com/validate"
 	greetv1 "github.com/TS22082/connect_buf_example/gen/greet/v1"
 	"github.com/TS22082/connect_buf_example/gen/greet/v1/greetv1connect"
+	"github.com/TS22082/connect_buf_example/internal"
 	"github.com/gorilla/mux"
 )
 
@@ -32,23 +31,7 @@ func main() {
 	router := mux.NewRouter()
 
 	api := router.PathPrefix("/api/v1").Subrouter()
-	api.HandleFunc("/user/{id}", func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		projectId, exists := vars["id"]
-
-		if !exists {
-			http.Error(w, "Wrong input", http.StatusExpectationFailed)
-			return
-		}
-
-		if err := json.NewEncoder(w).Encode(map[string]interface{}{
-			"msg":       fmt.Sprintf("ProjectId: %s", projectId),
-			"timestamp": time.Now().UTC(),
-		}); err != nil {
-			http.Error(w, "Can not send response", http.StatusExpectationFailed)
-			return
-		}
-	}).Methods("GET")
+	api.HandleFunc("/user/{id}", internal.TestHandler).Methods("GET")
 
 	greeter := &GreetServer{}
 	path, handler := greetv1connect.NewGreetServiceHandler(
