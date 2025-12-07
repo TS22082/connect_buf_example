@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -9,31 +8,19 @@ import (
 
 	"connectrpc.com/connect"
 	"connectrpc.com/validate"
-	greetv1 "github.com/TS22082/connect_buf_example/gen/greet/v1"
 	"github.com/TS22082/connect_buf_example/gen/greet/v1/greetv1connect"
-	"github.com/TS22082/connect_buf_example/internal"
+	"github.com/TS22082/connect_buf_example/internal/handlers"
+	"github.com/TS22082/connect_buf_example/internal/services/greet"
 	"github.com/gorilla/mux"
 )
-
-type GreetServer struct{}
-
-func (s *GreetServer) Greet(
-	_ context.Context,
-	req *greetv1.GreetRequest,
-) (*greetv1.GreetResponse, error) {
-	res := &greetv1.GreetResponse{
-		Greeting: fmt.Sprintf("Hello, %s!", req.Name),
-	}
-	return res, nil
-}
 
 func main() {
 	router := mux.NewRouter()
 
 	api := router.PathPrefix("/api/v1").Subrouter()
-	api.HandleFunc("/user/{id}", internal.TestHandler).Methods("GET")
+	api.HandleFunc("/user/{id}", handlers.TestHandler).Methods("GET")
 
-	greeter := &GreetServer{}
+	greeter := &greet.GreetServer{}
 	path, handler := greetv1connect.NewGreetServiceHandler(
 		greeter,
 		connect.WithInterceptors(validate.NewInterceptor()),
